@@ -1,0 +1,58 @@
+---
+title: "Learning classes of physical excersices"
+output: html_document
+---
+
+## 1. Preprocessing
+First of all, we will look through the data set to understand base heuristics.
+Large subset of factors is not defined and marked with NA for most of the rows. 
+We can suppose that excluding this part from training set won't spoil classification
+quality badly though drastically increase speed. The second observation is a large number
+of factors. . We also should exclude such columns as X (row counter).
+To control the quality and tune parameters cross-validation is involved.
+The inital algorithm we will test will be desision trees.
+
+```{r}
+library(caret)
+
+colToRemove <- c("X","cvtd_timestamp", "new_window", "num_window") 
+
+trainingSet <- read.csv("/home/iv/Документы/prac_ml/pml-training.csv")
+testSet <- read.csv("/home/iv/Документы/prac_ml/pml-testing.csv")
+trainingSet <- trainingSet[ , -which(names(trainingSet) %in% colToRemove)]
+testSet <- testSet[ , -which(names(testSet) %in% colToRemove)]
+
+trainingSet <- trainingSet[ , -which(colSums(is.na(trainingSet))> 0.95 * nrow(trainingSet))]
+trainingSet <- trainingSet[ , -which(colSums("" == trainingSet)> 0.95 * nrow(trainingSet))]
+testSet <- testSet[ , -which(colSums(is.na(testSet))> 0.95 * nrow(testSet))]
+testSetInner <- testSet[ , -which(names(testSet) %in% c("problem_id"))]
+
+#setting up cross validation with 10 folds
+
+
+set.seed(825)
+model <- train(classe ~ . , data = trainingSet, method='rpart',
+               trControl=trainControl(
+                 method='cv', number=10, classProbs=TRUE, ))
+model
+plot(model)
+
+```
+
+We see that accuracy is rather low. 
+
+```{r, echo=FALSE}
+set.seed(825)
+model_rf <- train(classe ~ . , data = trainingSet, method='rf',
+               trControl=trainControl(
+                 method='cv', number=10, classProbs=TRUE), ntree=5 )
+model_rf
+plot(model_rf)
+```
+
+Now the accuracy is quite high and we can use it for prediction.
+
+```{r, echo=FALSE}
+pred <- predict(model_rf, testSet)
+pred
+```
